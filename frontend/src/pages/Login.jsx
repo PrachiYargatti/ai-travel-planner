@@ -118,9 +118,9 @@ function Login() {
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-blue-600"
               >
                 {showPassword ? (
-                  <FaEyeSlash size={18} />
-                ) : (
                   <FaEye size={18} />
+                ) : (
+                  <FaEyeSlash size={18} />
                 )}
               </button>
 
