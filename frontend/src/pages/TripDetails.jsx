@@ -1,7 +1,22 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { jsPDF } from "jspdf";
+import {
+  FiArrowLeft,
+  FiDownload,
+  FiMapPin,
+  FiNavigation,
+  FiClock,
+  FiDollarSign,
+  FiPlus,
+  FiRefreshCw,
+  FiHome,
+  FiCompass,
+} from "react-icons/fi";
+import toast from "react-hot-toast";
+
 import api from "../services/api";
+import Navbar from "../components/Navbar";
 
 function TripDetails() {
   const { id } = useParams();
@@ -14,17 +29,16 @@ function TripDetails() {
 
   useEffect(() => {
     fetchTrip();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchTrip = async () => {
     try {
-      const response = await api.get(
-        `/trips/${id}`
-      );
-
+      const response = await api.get(`/trips/${id}`);
       setTrip(response.data);
     } catch (error) {
       console.log(error);
+      toast.error("Failed to load trip details");
     } finally {
       setLoading(false);
     }
@@ -32,28 +46,26 @@ function TripDetails() {
 
   const handleAddActivity = async (day) => {
     try {
-    const activity = activityInput[day];
+      const activity = activityInput[day];
 
-    if (!activity) return;
+      if (!activity) return;
 
-    const response = await api.put(
-      `/trips/${trip._id}/add-activity`,
-      {
+      const response = await api.put(`/trips/${trip._id}/add-activity`, {
         day,
         activity,
-      }
-    );
+      });
 
-    setTrip(response.data);
+      setTrip(response.data);
 
-    setActivityInput({
-      ...activityInput,
-      [day]: "",
-    });
+      setActivityInput({
+        ...activityInput,
+        [day]: "",
+      });
 
+      toast.success("Activity added");
     } catch (error) {
-    console.log(error);
-    alert("Failed to add activity");
+      console.log(error);
+      toast.error("Failed to add activity");
     }
   };
 
@@ -63,13 +75,10 @@ function TripDetails() {
 
       if (!prompt) return;
 
-      const response = await api.put(
-        `/trips/${trip._id}/regenerate-day`,
-        {
-          day,
-          prompt,
-        }
-      );
+      const response = await api.put(`/trips/${trip._id}/regenerate-day`, {
+        day,
+        prompt,
+      });
 
       setTrip(response.data);
 
@@ -78,10 +87,10 @@ function TripDetails() {
         [day]: "",
       });
 
-      alert("Day regenerated successfully");
+      toast.success("Day regenerated successfully");
     } catch (error) {
       console.log(error);
-      alert("Failed to regenerate day");
+      toast.error("Failed to regenerate day");
     }
   };
 
@@ -96,405 +105,311 @@ function TripDetails() {
     y += 15;
 
     doc.setFontSize(12);
-
-    doc.text(
-      `Trip: ${trip.tripOverview?.toLocation}`,
-      20,
-      y
-    );
+    doc.text(`Trip: ${trip.tripOverview?.toLocation}`, 20, y);
 
     y += 10;
-
-    doc.text(
-      `From: ${trip.tripOverview?.fromLocation}`,
-      20,
-      y
-    );
+    doc.text(`From: ${trip.tripOverview?.fromLocation}`, 20, y);
 
     y += 10;
-
-    doc.text(
-      `Duration: ${trip.numberOfDays} Days`,
-      20,
-      y
-    );
+    doc.text(`Duration: ${trip.numberOfDays} Days`, 20, y);
 
     y += 20;
 
     trip.itinerary.forEach((day) => {
-
       doc.setFontSize(14);
-
-      doc.text(
-        `Day ${day.day}: ${day.theme}`,
-        20,
-        y
-      );
-
+      doc.text(`Day ${day.day}: ${day.theme}`, 20, y);
       y += 10;
 
       doc.setFontSize(11);
 
       day.activities.forEach((activity) => {
-
-        doc.text(
-          `• ${activity}`,
-          25,
-          y
-        );
-
+        doc.text(`• ${activity}`, 25, y);
         y += 8;
 
         if (y > 270) {
           doc.addPage();
           y = 20;
         }
-
       });
 
       y += 10;
-
     });
 
-    doc.save(
-      `${trip.tripOverview?.toLocation}-trip.pdf`
-    );
+    doc.save(`${trip.tripOverview?.toLocation}-trip.pdf`);
   };
-  
+
   if (loading) {
     return (
-      <div className="min-h-screen flex justify-center items-center text-xl font-semibold">
-        Loading Trip...
+      <div className="min-h-screen flex justify-center items-center text-xl font-semibold bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200">
+        Loading trip...
       </div>
     );
   }
 
   if (!trip) {
     return (
-      <div className="min-h-screen flex justify-center items-center text-red-500 text-xl">
+      <div className="min-h-screen flex justify-center items-center text-red-500 text-xl bg-slate-50 dark:bg-slate-950">
         Trip not found
       </div>
     );
   }
 
+  const cardClass =
+    "bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 p-6 md:p-8 mb-6";
+
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors">
+      <Navbar />
 
-      <div className="max-w-7xl mx-auto">
-
+      <div className="max-w-7xl mx-auto p-5 md:p-6">
         {/* Header */}
-
-        <div className="bg-white rounded-3xl shadow-lg p-8 mb-6">
-
-            <div className="flex justify-between items-center flex-wrap gap-4">
-
-                <div>
-                <h1 className="text-4xl font-bold text-blue-600">
-                    {trip.tripOverview?.toLocation}
+        <div className={cardClass}>
+          <div className="flex justify-between items-center flex-wrap gap-4">
+            <div>
+              <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 mb-1">
+                <FiMapPin size={18} />
+                <h1 className="text-2xl md:text-4xl font-bold text-slate-800 dark:text-white">
+                  {trip.tripOverview?.toLocation}
                 </h1>
+              </div>
 
-                <p className="text-gray-500 mt-2">
-                    {trip.numberOfDays} Days • {trip.budgetType}
-                </p>
-                </div>
-
-                <div className="flex gap-3">
-
-                <button
-                onClick={() => navigate("/dashboard")}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl font-semibold shadow-md transition"
-                >
-                ← Dashboard
-                </button>
-
-                <button
-                onClick={downloadPDF}
-                className="bg-green-600 hover:bg-green-700 text-white px-5 py-3 rounded-xl font-semibold shadow-md transition"
-                >
-                📄 Download PDF
-                </button>
-
+              <p className="text-slate-500 dark:text-slate-400 mt-1">
+                {trip.numberOfDays} Days • {trip.budgetType}
+              </p>
             </div>
 
+            <div className="flex gap-3">
+              <button
+                onClick={() => navigate("/dashboard")}
+                className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-5 py-3 rounded-xl font-semibold transition-colors"
+              >
+                <FiArrowLeft size={16} />
+                Dashboard
+              </button>
+
+              <button
+                onClick={downloadPDF}
+                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl font-semibold shadow-md shadow-indigo-600/25 transition-colors"
+              >
+                <FiDownload size={16} />
+                Download PDF
+              </button>
+            </div>
+          </div>
         </div>
 
-    </div>
-
         {/* Route Information */}
-
-        <div className="bg-white rounded-3xl shadow-lg p-8 mb-6">
-
-          <h2 className="text-2xl font-bold mb-6">
+        <div className={cardClass}>
+          <h2 className="text-xl md:text-2xl font-bold mb-6 text-slate-800 dark:text-white flex items-center gap-2">
+            <FiNavigation className="text-indigo-500" size={20} />
             Route Information
           </h2>
 
-          <div className="grid md:grid-cols-2 gap-6">
-
-            <div>
+          <div className="grid md:grid-cols-2 gap-6 text-slate-700 dark:text-slate-300">
+            <div className="space-y-2">
               <p>
-                <strong>From:</strong>{" "}
+                <strong className="text-slate-800 dark:text-white">From:</strong>{" "}
                 {trip.tripOverview?.fromLocation}
               </p>
-
               <p>
-                <strong>To:</strong>{" "}
+                <strong className="text-slate-800 dark:text-white">To:</strong>{" "}
                 {trip.tripOverview?.toLocation}
               </p>
-
               <p>
-                <strong>Distance:</strong>{" "}
+                <strong className="text-slate-800 dark:text-white">Distance:</strong>{" "}
                 {trip.tripOverview?.distance}
               </p>
             </div>
 
-            <div>
+            <div className="space-y-2">
               <p>
-                <strong>Best Route:</strong>{" "}
+                <strong className="text-slate-800 dark:text-white">Best Route:</strong>{" "}
                 {trip.tripOverview?.bestRoute}
               </p>
-
               <p>
-                <strong>Travel Duration:</strong>{" "}
+                <strong className="text-slate-800 dark:text-white">Travel Duration:</strong>{" "}
                 {trip.tripOverview?.travelDuration}
               </p>
-
               <p>
-                <strong>Transport:</strong>{" "}
+                <strong className="text-slate-800 dark:text-white">Transport:</strong>{" "}
                 {trip.tripOverview?.recommendedTransport}
               </p>
-
               <p>
-                <strong>Travel Cost:</strong>{" "}
+                <strong className="text-slate-800 dark:text-white">Travel Cost:</strong>{" "}
                 {trip.tripOverview?.estimatedTravelCost}
               </p>
             </div>
-
           </div>
-
         </div>
 
         {/* Budget + Hotels */}
-
         <div className="grid md:grid-cols-2 gap-6 mb-6">
-
-          <div className="bg-white rounded-3xl shadow-lg p-8">
-
-            <h2 className="text-2xl font-bold mb-4">
+          <div className={cardClass + " !mb-0"}>
+            <h2 className="text-xl md:text-2xl font-bold mb-4 text-slate-800 dark:text-white flex items-center gap-2">
+              <FiDollarSign className="text-indigo-500" size={20} />
               Budget Breakdown
             </h2>
 
-            <p>
-              Transportation:{" "}
-              {trip.estimatedBudget?.transportation}
-            </p>
-
-            <p>
-              Accommodation:{" "}
-              {trip.estimatedBudget?.accommodation}
-            </p>
-
-            <p>
-              Food: {trip.estimatedBudget?.food}
-            </p>
-
-            <p>
-              Activities:{" "}
-              {trip.estimatedBudget?.activities}
-            </p>
-
-            <p>
-              Miscellaneous:{" "}
-              {trip.estimatedBudget?.miscellaneous}
-            </p>
-
-            <p className="font-bold text-blue-600 mt-4">
-              Total: {trip.estimatedBudget?.total}
-            </p>
-
+            <div className="space-y-2 text-slate-700 dark:text-slate-300">
+              <p>Transportation: {trip.estimatedBudget?.transportation}</p>
+              <p>Accommodation: {trip.estimatedBudget?.accommodation}</p>
+              <p>Food: {trip.estimatedBudget?.food}</p>
+              <p>Activities: {trip.estimatedBudget?.activities}</p>
+              <p>Miscellaneous: {trip.estimatedBudget?.miscellaneous}</p>
+              <p className="font-bold text-indigo-600 dark:text-indigo-400 mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+                Total: {trip.estimatedBudget?.total}
+              </p>
+            </div>
           </div>
 
-          <div className="bg-white rounded-3xl shadow-lg p-8">
-
-            <h2 className="text-2xl font-bold mb-4">
+          <div className={cardClass + " !mb-0"}>
+            <h2 className="text-xl md:text-2xl font-bold mb-4 text-slate-800 dark:text-white flex items-center gap-2">
+              <FiHome className="text-indigo-500" size={20} />
               Recommended Hotels
             </h2>
 
             {trip.hotels?.map((hotel, index) => (
               <div
                 key={index}
-                className="border-b py-3"
+                className="border-b border-slate-100 dark:border-slate-800 last:border-0 py-3"
               >
-                <h3 className="font-semibold">
+                <h3 className="font-semibold text-slate-800 dark:text-white">
                   {hotel.name}
                 </h3>
-
-                <p className="text-gray-500">
+                <p className="text-slate-500 dark:text-slate-400 text-sm">
                   {hotel.category}
                 </p>
-
-                <p className="text-blue-600">
+                <p className="text-indigo-600 dark:text-indigo-400 text-sm font-medium">
                   {hotel.priceRange}
                 </p>
               </div>
             ))}
-
           </div>
-
         </div>
 
         {/* Itinerary */}
-
-        <div className="bg-white rounded-3xl shadow-lg p-8 mb-6">
-
-          <h2 className="text-3xl font-bold mb-6">
+        <div className={cardClass}>
+          <h2 className="text-2xl md:text-3xl font-bold mb-6 text-slate-800 dark:text-white">
             Day-wise Itinerary
           </h2>
 
           {trip.itinerary?.map((day, index) => (
+            <div
+              key={index}
+              className="mb-8 last:mb-0 border-l-4 border-indigo-500 pl-6"
+            >
+              <h3 className="text-xl font-bold text-slate-800 dark:text-white">
+                Day {day.day}
+              </h3>
 
-          <div
-            key={index}
-            className="mb-8 border-l-4 border-blue-500 pl-6"
-          >
+              <p className="text-indigo-600 dark:text-indigo-400 mb-3">
+                {day.theme}
+              </p>
 
-            <h3 className="text-xl font-bold">
-              Day {day.day}
-            </h3>
+              <ul className="list-disc ml-5 space-y-2">
+                {day.activities?.map((activity, i) => (
+                  <li key={i} className="text-slate-700 dark:text-slate-300">
+                    {activity}
+                  </li>
+                ))}
+              </ul>
 
-            <p className="text-blue-600 mb-3">
-              {day.theme}
-            </p>
+              {/* Add Activity */}
+              <div className="mt-5 flex flex-col sm:flex-row gap-3">
+                <input
+                  type="text"
+                  placeholder="Add a new activity..."
+                  value={activityInput[day.day] || ""}
+                  onChange={(e) =>
+                    setActivityInput({
+                      ...activityInput,
+                      [day.day]: e.target.value,
+                    })
+                  }
+                  className="flex-1 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
+                />
 
-            <ul className="list-disc ml-5 space-y-2">
-              {day.activities?.map((activity, i) => (
-                <li
-                  key={i}
-                  className="text-gray-700"
+                <button
+                  onClick={() => handleAddActivity(day.day)}
+                  className="flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 sm:py-0 rounded-lg font-medium transition-colors"
                 >
-                  {activity}
-                </li>
-              ))}
-            </ul>
+                  <FiPlus size={16} />
+                  Add
+                </button>
+              </div>
 
-            {/* Add Activity */}
-            <div className="mt-5 flex gap-3">
+              {/* Regenerate Day */}
+              <div className="mt-3 flex flex-col sm:flex-row gap-3">
+                <input
+                  type="text"
+                  placeholder="Example: Make this day more adventurous..."
+                  value={regeneratePrompt[day.day] || ""}
+                  onChange={(e) =>
+                    setRegeneratePrompt({
+                      ...regeneratePrompt,
+                      [day.day]: e.target.value,
+                    })
+                  }
+                  className="flex-1 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-orange-400 transition-shadow"
+                />
 
-              <input
-                type="text"
-                placeholder="Add a new activity..."
-                value={activityInput[day.day] || ""}
-                onChange={(e) =>
-                  setActivityInput({
-                    ...activityInput,
-                    [day.day]: e.target.value,
-                  })
-                }
-                className="flex-1 border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-
-              <button
-                onClick={() => handleAddActivity(day.day)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-5 rounded-lg transition"
-              >
-                Add Activity
-              </button>
-
+                <button
+                  onClick={() => handleRegenerateDay(day.day)}
+                  className="flex items-center justify-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white px-5 py-3 sm:py-0 rounded-lg font-medium transition-colors"
+                >
+                  <FiRefreshCw size={15} />
+                  Regenerate
+                </button>
+              </div>
             </div>
-
-            {/* Regenerate Day */}
-            <div className="mt-4 flex gap-3">
-
-              <input
-                type="text"
-                placeholder="Example: Make this day more adventurous..."
-                value={regeneratePrompt[day.day] || ""}
-                onChange={(e) =>
-                  setRegeneratePrompt({
-                    ...regeneratePrompt,
-                    [day.day]: e.target.value,
-                  })
-                }
-                className="flex-1 border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-orange-400"
-              />
-
-              <button
-                onClick={() => handleRegenerateDay(day.day)}
-                className="bg-orange-500 hover:bg-orange-600 text-white px-5 rounded-lg transition"
-              >
-                Regenerate Day
-              </button>
-
-            </div>
-
-          </div>
-
-        ))}
+          ))}
         </div>
 
         {/* Food Recommendations */}
-
-        <div className="bg-white rounded-3xl shadow-lg p-8 mb-6">
-
-          <h2 className="text-2xl font-bold mb-4">
+        <div className={cardClass}>
+          <h2 className="text-xl md:text-2xl font-bold mb-4 text-slate-800 dark:text-white">
             Food Recommendations
           </h2>
 
-          <ul className="list-disc ml-5">
-            {trip.foodRecommendations?.map(
-              (food, index) => (
-                <li key={index}>
-                  {food}
-                </li>
-              )
-            )}
+          <ul className="list-disc ml-5 text-slate-700 dark:text-slate-300 space-y-1">
+            {trip.foodRecommendations?.map((food, index) => (
+              <li key={index}>{food}</li>
+            ))}
           </ul>
-
         </div>
 
         {/* Interest Recommendations */}
-
-        <div className="bg-white rounded-3xl shadow-lg p-8 mb-6">
-
-          <h2 className="text-2xl font-bold mb-4">
+        <div className={cardClass}>
+          <h2 className="text-xl md:text-2xl font-bold mb-4 text-slate-800 dark:text-white flex items-center gap-2">
+            <FiCompass className="text-indigo-500" size={19} />
             Recommended Attractions
           </h2>
 
-          <ul className="list-disc ml-5">
-            {trip.interestRecommendations?.map(
-              (item, index) => (
-                <li key={index}>
-                  {typeof item === "string"
-                    ? item
-                    : JSON.stringify(item)}
-                </li>
-              )
-            )}
+          <ul className="list-disc ml-5 text-slate-700 dark:text-slate-300 space-y-1">
+            {trip.interestRecommendations?.map((item, index) => (
+              <li key={index}>
+                {typeof item === "string" ? item : JSON.stringify(item)}
+              </li>
+            ))}
           </ul>
-
         </div>
 
         {/* Travel Tips */}
+        <div className={cardClass + " flex items-start gap-3"}>
+          <div className="w-full">
+            <h2 className="text-xl md:text-2xl font-bold mb-4 text-slate-800 dark:text-white flex items-center gap-2">
+              <FiClock className="text-indigo-500" size={19} />
+              Travel Tips
+            </h2>
 
-        <div className="bg-white rounded-3xl shadow-lg p-8">
-
-          <h2 className="text-2xl font-bold mb-4">
-            Travel Tips
-          </h2>
-
-          <ul className="list-disc ml-5">
-            {trip.travelTips?.map(
-              (tip, index) => (
-                <li key={index}>
-                  {tip}
-                </li>
-              )
-            )}
-          </ul>
-
+            <ul className="list-disc ml-5 text-slate-700 dark:text-slate-300 space-y-1">
+              {trip.travelTips?.map((tip, index) => (
+                <li key={index}>{tip}</li>
+              ))}
+            </ul>
+          </div>
         </div>
-
       </div>
-
     </div>
   );
 }
