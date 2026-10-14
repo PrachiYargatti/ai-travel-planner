@@ -3,6 +3,7 @@ const express = require("express");
 const {
   createTrip,
   getMyTrips,
+  getTripById,
   deleteTrip,
   addActivity,
   removeActivity,
@@ -10,63 +11,46 @@ const {
 } = require("../controllers/tripController");
 
 const protect = require("../middleware/authMiddleware");
+const { validate, validateObjectId } = require("../middleware/validate");
+const { aiLimiter } = require("../middleware/rateLimiter");
+const {
+  generateTripSchema,
+  activitySchema,
+  regenerateDaySchema,
+} = require("../validators/schemas");
 
 const router = express.Router();
 
-router.post(
-  "/generate",
-  protect,
-  createTrip
-);
+// Every trip route requires login
+router.use(protect);
 
-router.get(
-  "/my-trips",
-  protect,
-  getMyTrips
-);
+router.post("/generate", aiLimiter, validate(generateTripSchema), createTrip);
 
-router.delete(
-  "/:id",
-  protect,
-  deleteTrip
-);
+router.get("/my-trips", getMyTrips);
+
+router.get("/:id", validateObjectId, getTripById);
+router.delete("/:id", validateObjectId, deleteTrip);
 
 router.put(
   "/:id/add-activity",
-  protect,
+  validateObjectId,
+  validate(activitySchema),
   addActivity
 );
 
 router.put(
   "/:id/remove-activity",
-  protect,
+  validateObjectId,
+  validate(activitySchema),
   removeActivity
 );
 
 router.put(
   "/:id/regenerate-day",
-  protect,
+  validateObjectId,
+  aiLimiter,
+  validate(regenerateDaySchema),
   regenerateDay
-);
-
-router.get(
-  "/:id",
-  protect,
-  async (req, res) => {
-    try {
-      const Trip = require("../models/Trip");
-
-      const trip = await Trip.findById(
-        req.params.id
-      );
-
-      res.json(trip);
-    } catch (error) {
-      res.status(500).json({
-        message: error.message,
-      });
-    }
-  }
 );
 
 module.exports = router;

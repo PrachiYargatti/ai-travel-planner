@@ -85,30 +85,17 @@ cd ai-travel-planner
 
 ```bash
 cd backend
-
+cp .env.example .env     # then fill in your own values
 npm install
-
-npm start
-```
-
-Create a `.env` file inside the `backend` folder.
-
-Example:
-
-```env
-PORT=5000
-MONGO_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret
-GEMINI_API_KEY=your_gemini_api_key
+npm run dev              # or: npm start
 ```
 
 ### Frontend Setup
 
 ```bash
 cd frontend
-
+cp .env.example .env     # VITE_API_URL=http://localhost:5000/api
 npm install
-
 npm run dev
 ```
 
@@ -120,6 +107,7 @@ npm run dev
 | ------ | -------------------- | ------------------- |
 | POST   | `/api/auth/register` | Register a new user |
 | POST   | `/api/auth/login`    | Login user          |
+| PUT    | `/api/auth/update-password` | Change password |
 
 ### Trips
 
@@ -129,6 +117,7 @@ npm run dev
 | GET    | `/api/trips/my-trips`           | Get User Trips      |
 | GET    | `/api/trips/:id`                | Get Trip Details    |
 | PUT    | `/api/trips/:id/add-activity`   | Add Activity        |
+| PUT    | `/api/trips/:id/remove-activity`| Remove Activity     |
 | PUT    | `/api/trips/:id/regenerate-day` | Regenerate Day Plan |
 | DELETE | `/api/trips/:id`                | Delete Trip         |
 
@@ -141,7 +130,20 @@ PORT=
 MONGO_URI=
 JWT_SECRET=
 GEMINI_API_KEY=
+CLIENT_URL=        # comma-separated allowed frontend origins (CORS)
 ```
+
+Frontend: `VITE_API_URL` (backend base URL including `/api`).
+
+## Security
+
+* CORS restricted to `CLIENT_URL` origins
+* Input validation with `zod` on all write endpoints
+* Rate limiting: global, login, register, and 15 AI calls/hour per user
+* `helmet` security headers, 10kb body limit
+* Trips are only readable/editable/deletable by their owner
+* Passwords: 8-72 chars with a letter and a number; bcrypt hashed
+* Secrets are never logged; server refuses to start without them
 
 ## Future Enhancements
 

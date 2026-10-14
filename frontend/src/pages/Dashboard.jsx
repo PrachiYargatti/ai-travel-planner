@@ -40,6 +40,8 @@ function Dashboard() {
   };
 
   const handleDeleteTrip = async (tripId) => {
+    if (!window.confirm("Delete this trip? This cannot be undone.")) return;
+
     try {
       setDeletingId(tripId);
 

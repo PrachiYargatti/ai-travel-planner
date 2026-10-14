@@ -29,6 +29,15 @@ function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (
+      formData.password.length < 8 ||
+      !/[A-Za-z]/.test(formData.password) ||
+      !/[0-9]/.test(formData.password)
+    ) {
+      toast.error("Password must be 8+ characters with at least one letter and one number");
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -36,7 +45,7 @@ function Register() {
 
       toast.success("Registration successful! Please log in.");
 
-      navigate("/");
+      navigate("/login");
     } catch (error) {
       toast.error(
         error.response?.data?.message || "Registration failed"
@@ -70,9 +79,9 @@ function Register() {
 
           <div>
             <h2 className="text-3xl font-bold leading-tight mb-3">
-              Join thousands of
+              Your next trip,
               <br />
-              smart travelers.
+              planned in seconds.
             </h2>
             <p className="text-white/80 max-w-sm">
               Create an account to start generating personalized,
@@ -155,10 +164,10 @@ function Register() {
                 <input
                   type={showPassword ? "text" : "password"}
                   name="password"
-                  placeholder="Create password"
+                  placeholder="Create password (min. 8 characters, letters + numbers)"
                   value={formData.password}
                   onChange={handleChange}
-                  minLength={6}
+                  minLength={8}
                   className="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 pl-11 pr-11 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-shadow"
                   required
                 />
@@ -184,7 +193,7 @@ function Register() {
             <p className="text-center mt-7 text-slate-600 dark:text-slate-400 text-sm">
               Already have an account?
               <Link
-                to="/"
+                to="/login"
                 className="text-indigo-600 dark:text-indigo-400 font-semibold ml-1.5 hover:underline"
               >
                 Log In

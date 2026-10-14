@@ -26,19 +26,19 @@ function TripDetails() {
   const [regeneratePrompt, setRegeneratePrompt] = useState({});
   const [trip, setTrip] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [regeneratingDay, setRegeneratingDay] = useState(null);
 
   useEffect(() => {
     fetchTrip();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [id]);
 
   const fetchTrip = async () => {
     try {
       const response = await api.get(`/trips/${id}`);
       setTrip(response.data);
     } catch (error) {
-      console.log(error);
-      toast.error("Failed to load trip details");
+      toast.error(error.response?.data?.message || "Failed to load trip details");
     } finally {
       setLoading(false);
     }
@@ -64,8 +64,7 @@ function TripDetails() {
 
       toast.success("Activity added");
     } catch (error) {
-      console.log(error);
-      toast.error("Failed to add activity");
+      toast.error(error.response?.data?.message || "Failed to add activity");
     }
   };
 
@@ -74,6 +73,8 @@ function TripDetails() {
       const prompt = regeneratePrompt[day];
 
       if (!prompt) return;
+
+      setRegeneratingDay(day);
 
       const response = await api.put(`/trips/${trip._id}/regenerate-day`, {
         day,
@@ -89,53 +90,92 @@ function TripDetails() {
 
       toast.success("Day regenerated successfully");
     } catch (error) {
-      console.log(error);
-      toast.error("Failed to regenerate day");
+      toast.error(error.response?.data?.message || "Failed to regenerate day");
+    } finally {
+      setRegeneratingDay(null);
     }
   };
 
   const downloadPDF = () => {
     const doc = new jsPDF();
-
+    const pageHeight = 280;
+    const maxWidth = 170;
     let y = 20;
 
-    doc.setFontSize(20);
-    doc.text("AI Travel Planner", 20, y);
+    // Writes wrapped text and adds pages automatically
+    const write = (text, { size = 11, x = 20, gap = 6, bold = false } = {}) => {
+      doc.setFont("helvetica", bold ? "bold" : "normal");
+      doc.setFontSize(size);
 
-    y += 15;
+      const lines = doc.splitTextToSize(String(text ?? ""), maxWidth - (x - 20));
 
-    doc.setFontSize(12);
-    doc.text(`Trip: ${trip.tripOverview?.toLocation}`, 20, y);
-
-    y += 10;
-    doc.text(`From: ${trip.tripOverview?.fromLocation}`, 20, y);
-
-    y += 10;
-    doc.text(`Duration: ${trip.numberOfDays} Days`, 20, y);
-
-    y += 20;
-
-    trip.itinerary.forEach((day) => {
-      doc.setFontSize(14);
-      doc.text(`Day ${day.day}: ${day.theme}`, 20, y);
-      y += 10;
-
-      doc.setFontSize(11);
-
-      day.activities.forEach((activity) => {
-        doc.text(`• ${activity}`, 25, y);
-        y += 8;
-
-        if (y > 270) {
+      lines.forEach((line) => {
+        if (y > pageHeight) {
           doc.addPage();
           y = 20;
         }
+        doc.text(line, x, y);
+        y += gap;
       });
+    };
 
-      y += 10;
+    const heading = (text) => {
+      y += 4;
+      write(text, { size: 14, bold: true, gap: 8 });
+    };
+
+    const o = trip.tripOverview || {};
+    const b = trip.estimatedBudget || {};
+
+    write("AI Travel Planner", { size: 20, bold: true, gap: 12 });
+    write(`Trip: ${o.fromLocation || trip.fromLocation} to ${o.toLocation || trip.toLocation}`, { size: 12 });
+    write(`Duration: ${trip.numberOfDays} Days  |  Budget: ${trip.budgetType}`, { size: 12 });
+
+    heading("Route Information");
+    write(`Distance: ${o.distance || "-"}`);
+    write(`Best Route: ${o.bestRoute || "-"}`);
+    write(`Travel Duration: ${o.travelDuration || "-"}`);
+    write(`Transport: ${o.recommendedTransport || "-"}`);
+    write(`Travel Cost: ${o.estimatedTravelCost || "-"}`);
+
+    heading("Budget Breakdown");
+    write(`Transportation: ${b.transportation || "-"}`);
+    write(`Accommodation: ${b.accommodation || "-"}`);
+    write(`Food: ${b.food || "-"}`);
+    write(`Activities: ${b.activities || "-"}`);
+    write(`Miscellaneous: ${b.miscellaneous || "-"}`);
+    write(`Total: ${b.total || "-"}`, { bold: true });
+
+    if (trip.hotels?.length) {
+      heading("Recommended Hotels");
+      trip.hotels.forEach((h) =>
+        write(`- ${h.name} (${h.category}) - ${h.priceRange}`, { x: 22 })
+      );
+    }
+
+    heading("Day-wise Itinerary");
+    trip.itinerary?.forEach((day) => {
+      y += 2;
+      write(`Day ${day.day}: ${day.theme || ""}`, { size: 12, bold: true, gap: 7 });
+      day.activities?.forEach((activity) =>
+        write(`- ${activity}`, { x: 25 })
+      );
     });
 
-    doc.save(`${trip.tripOverview?.toLocation}-trip.pdf`);
+    const list = (title, items) => {
+      if (!items?.length) return;
+      heading(title);
+      items.forEach((item) =>
+        write(`- ${typeof item === "string" ? item : JSON.stringify(item)}`, { x: 22 })
+      );
+    };
+
+    list("Food Recommendations", trip.foodRecommendations);
+    list("Recommended Attractions", trip.interestRecommendations);
+    list("Travel Tips", trip.travelTips);
+
+    const name = (o.toLocation || trip.toLocation || "trip").replace(/[^a-z0-9]+/gi, "-");
+    doc.save(`${name}-trip.pdf`);
   };
 
   if (loading) {
@@ -319,6 +359,7 @@ function TripDetails() {
                 <input
                   type="text"
                   placeholder="Add a new activity..."
+                  maxLength={300}
                   value={activityInput[day.day] || ""}
                   onChange={(e) =>
                     setActivityInput({
@@ -343,6 +384,7 @@ function TripDetails() {
                 <input
                   type="text"
                   placeholder="Example: Make this day more adventurous..."
+                  maxLength={300}
                   value={regeneratePrompt[day.day] || ""}
                   onChange={(e) =>
                     setRegeneratePrompt({
@@ -355,10 +397,11 @@ function TripDetails() {
 
                 <button
                   onClick={() => handleRegenerateDay(day.day)}
-                  className="flex items-center justify-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white px-5 py-3 sm:py-0 rounded-lg font-medium transition-colors"
+                  disabled={regeneratingDay === day.day}
+                  className="flex items-center justify-center gap-1.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed text-white px-5 py-3 sm:py-0 rounded-lg font-medium transition-colors"
                 >
                   <FiRefreshCw size={15} />
-                  Regenerate
+                  {regeneratingDay === day.day ? "Regenerating..." : "Regenerate"}
                 </button>
               </div>
             </div>

@@ -22,8 +22,12 @@ function UpdatePasswordModal({ onClose }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (form.newPassword.length < 6) {
-      toast.error("New password must be at least 6 characters");
+    if (
+      form.newPassword.length < 8 ||
+      !/[A-Za-z]/.test(form.newPassword) ||
+      !/[0-9]/.test(form.newPassword)
+    ) {
+      toast.error("Password must be 8+ characters with at least one letter and one number");
       return;
     }
 
@@ -109,11 +113,11 @@ function UpdatePasswordModal({ onClose }) {
             <input
               type={showNew ? "text" : "password"}
               name="newPassword"
-              placeholder="New password (min. 6 characters)"
+              placeholder="New password (min. 8 characters)"
               value={form.newPassword}
               onChange={handleChange}
               required
-              minLength={6}
+              minLength={8}
               className="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 rounded-lg pr-11 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
             />
 
@@ -133,7 +137,7 @@ function UpdatePasswordModal({ onClose }) {
             value={form.confirmPassword}
             onChange={handleChange}
             required
-            minLength={6}
+            minLength={8}
             className="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
           />
 

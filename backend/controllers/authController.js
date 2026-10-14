@@ -10,9 +10,7 @@ const registerUser = async (req, res) => {
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
-      return res.status(400).json({
-        message: "User already exists",
-      });
+      return res.status(400).json({ message: "User already exists" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -28,9 +26,12 @@ const registerUser = async (req, res) => {
       userId: user._id,
     });
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
+    // Duplicate email race condition (unique index)
+    if (error.code === 11000) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+    console.error("Register error:", error);
+    res.status(500).json({ message: "Registration failed. Please try again." });
   }
 };
 
@@ -42,31 +43,19 @@ const loginUser = async (req, res) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-      return res.status(400).json({
-        message: "Invalid credentials",
-      });
+      return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    const isMatch = await bcrypt.compare(
-      password,
-      user.password
-    );
+    const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
-      return res.status(400).json({
-        message: "Invalid credentials",
-      });
+      return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    const token = jwt.sign(
-      {
-        id: user._id,
-      },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "7d",
-      }
-    );
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+      algorithm: "HS256",
+    });
 
     res.status(200).json({
       token,
@@ -76,11 +65,9 @@ const loginUser = async (req, res) => {
         email: user.email,
       },
     });
-
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Login failed. Please try again." });
   }
 };
 
@@ -89,47 +76,31 @@ const updatePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({
-        message: "Current and new password are required",
-      });
-    }
-
-    if (newPassword.length < 6) {
-      return res.status(400).json({
-        message: "New password must be at least 6 characters",
-      });
-    }
-
     const user = await User.findById(req.user.id);
 
     if (!user) {
-      return res.status(404).json({
-        message: "User not found",
-      });
+      return res.status(404).json({ message: "User not found" });
     }
 
-    const isMatch = await bcrypt.compare(
-      currentPassword,
-      user.password
-    );
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
 
     if (!isMatch) {
-      return res.status(400).json({
-        message: "Current password is incorrect",
-      });
+      return res.status(400).json({ message: "Current password is incorrect" });
+    }
+
+    if (currentPassword === newPassword) {
+      return res
+        .status(400)
+        .json({ message: "New password must be different from current password" });
     }
 
     user.password = await bcrypt.hash(newPassword, 10);
     await user.save();
 
-    res.status(200).json({
-      message: "Password updated successfully",
-    });
+    res.status(200).json({ message: "Password updated successfully" });
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
+    console.error("Update password error:", error);
+    res.status(500).json({ message: "Could not update password." });
   }
 };
 

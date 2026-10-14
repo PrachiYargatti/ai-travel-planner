@@ -6,26 +6,34 @@ const tripSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
 
     fromLocation: {
       type: String,
       required: true,
+      trim: true,
+      maxlength: 100,
     },
 
     toLocation: {
       type: String,
       required: true,
+      trim: true,
+      maxlength: 100,
     },
 
     numberOfDays: {
       type: Number,
       required: true,
+      min: 1,
+      max: 30,
     },
 
     budgetType: {
       type: String,
       required: true,
+      enum: ["Budget", "Medium", "Luxury"],
     },
 
     interests: {

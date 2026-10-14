@@ -4,6 +4,18 @@ const {
   regenerateDayPlan,
 } = require("../services/geminiService");
 
+// Turns AI / server failures into a safe response
+const handleError = (res, error, fallbackMessage) => {
+  if (error.statusCode === 502) {
+    return res
+      .status(502)
+      .json({ message: "The AI returned an unexpected response. Please try again." });
+  }
+
+  console.error(fallbackMessage, error);
+  res.status(500).json({ message: fallbackMessage });
+};
+
 const createTrip = async (req, res) => {
   try {
     const {
@@ -15,18 +27,14 @@ const createTrip = async (req, res) => {
       transportation,
     } = req.body;
 
-    const aiResponse = await generateTripPlan(
+    const plan = await generateTripPlan({
       fromLocation,
       toLocation,
       numberOfDays,
       budgetType,
       interests,
-      transportation
-    );
-
-    const parsedData = JSON.parse(
-      aiResponse.replace(/```json|```/g, "")
-    );
+      transportation,
+    });
 
     const trip = await Trip.create({
       userId: req.user.id,
@@ -36,38 +44,42 @@ const createTrip = async (req, res) => {
       budgetType,
       interests,
       transportation,
-      itinerary: parsedData.itinerary,
-      estimatedBudget:
-        parsedData.estimatedBudget,
-      hotels: parsedData.hotels,
-      interestRecommendations:
-        parsedData.interestRecommendations,
-      tripOverview: parsedData.tripOverview,
-      foodRecommendations:
-        parsedData.foodRecommendations,
-      travelTips:
-        parsedData.travelTips,
+      ...plan,
     });
 
     res.status(201).json(trip);
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
+    handleError(res, error, "Failed to generate trip. Please try again.");
   }
 };
 
 const getMyTrips = async (req, res) => {
   try {
-    const trips = await Trip.find({
-      userId: req.user.id,
-    }).sort({ createdAt: -1 });
+    const trips = await Trip.find({ userId: req.user.id }).sort({
+      createdAt: -1,
+    });
 
     res.status(200).json(trips);
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
+    handleError(res, error, "Failed to load trips.");
+  }
+};
+
+// FIX: only the owner can read a trip (was: findById with no user check)
+const getTripById = async (req, res) => {
+  try {
+    const trip = await Trip.findOne({
+      _id: req.params.id,
+      userId: req.user.id,
     });
+
+    if (!trip) {
+      return res.status(404).json({ message: "Trip not found" });
+    }
+
+    res.json(trip);
+  } catch (error) {
+    handleError(res, error, "Failed to load trip.");
   }
 };
 
@@ -79,18 +91,12 @@ const deleteTrip = async (req, res) => {
     });
 
     if (!trip) {
-      return res.status(404).json({
-        message: "Trip not found",
-      });
+      return res.status(404).json({ message: "Trip not found" });
     }
 
-    res.json({
-      message: "Trip deleted successfully",
-    });
+    res.json({ message: "Trip deleted successfully" });
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
+    handleError(res, error, "Failed to delete trip.");
   }
 };
 
@@ -104,30 +110,24 @@ const addActivity = async (req, res) => {
     });
 
     if (!trip) {
-      return res.status(404).json({
-        message: "Trip not found",
-      });
+      return res.status(404).json({ message: "Trip not found" });
     }
 
-    const dayPlan = trip.itinerary.find(
-      (item) => item.day === day
-    );
+    const dayPlan = trip.itinerary.find((item) => item.day === day);
 
     if (!dayPlan) {
-      return res.status(404).json({
-        message: "Day not found",
-      });
+      return res.status(404).json({ message: "Day not found" });
     }
 
     dayPlan.activities.push(activity);
 
+    // itinerary is a Mixed array, so Mongoose can't see nested changes by itself
+    trip.markModified("itinerary");
     await trip.save();
 
     res.json(trip);
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
+    handleError(res, error, "Failed to add activity.");
   }
 };
 
@@ -141,33 +141,23 @@ const removeActivity = async (req, res) => {
     });
 
     if (!trip) {
-      return res.status(404).json({
-        message: "Trip not found",
-      });
+      return res.status(404).json({ message: "Trip not found" });
     }
 
-    const dayPlan = trip.itinerary.find(
-      (item) => item.day === day
-    );
+    const dayPlan = trip.itinerary.find((item) => item.day === day);
 
     if (!dayPlan) {
-      return res.status(404).json({
-        message: "Day not found",
-      });
+      return res.status(404).json({ message: "Day not found" });
     }
 
-    dayPlan.activities =
-      dayPlan.activities.filter(
-        (item) => item !== activity
-      );
+    dayPlan.activities = dayPlan.activities.filter((item) => item !== activity);
 
+    trip.markModified("itinerary");
     await trip.save();
 
     res.json(trip);
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
+    handleError(res, error, "Failed to remove activity.");
   }
 };
 
@@ -181,57 +171,38 @@ const regenerateDay = async (req, res) => {
     });
 
     if (!trip) {
-      return res.status(404).json({
-        message: "Trip not found",
-      });
+      return res.status(404).json({ message: "Trip not found" });
     }
 
-    const aiResponse = await regenerateDayPlan(
-      trip.fromLocation,
-      trip.toLocation,
-      day,
-      trip.interests,
-      prompt
-    );
-
-    const newDay = JSON.parse(
-      aiResponse.replace(/```json|```/g, "")
-    );
-
-    if (
-      newDay.activities &&
-      typeof newDay.activities[0] === "object"
-    ) {
-      newDay.activities = newDay.activities.map(
-        (item) => item.description || JSON.stringify(item)
-      );
-    }
-
-    const index = trip.itinerary.findIndex(
-      (item) => item.day === day
-    );
+    const index = trip.itinerary.findIndex((item) => item.day === day);
 
     if (index === -1) {
-      return res.status(404).json({
-        message: "Day not found",
-      });
+      return res.status(404).json({ message: "Day not found" });
     }
+
+    const newDay = await regenerateDayPlan({
+      fromLocation: trip.fromLocation,
+      toLocation: trip.toLocation,
+      day,
+      interests: trip.interests,
+      customPrompt: prompt,
+    });
 
     trip.itinerary[index] = newDay;
 
+    trip.markModified("itinerary");
     await trip.save();
 
     res.json(trip);
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
+    handleError(res, error, "Failed to regenerate day. Please try again.");
   }
 };
 
 module.exports = {
   createTrip,
   getMyTrips,
+  getTripById,
   deleteTrip,
   addActivity,
   removeActivity,

@@ -45,8 +45,6 @@ function CreateTrip() {
 
       navigate(`/trip/${response.data._id}`);
     } catch (error) {
-      console.log(error);
-
       toast.error(
         error.response?.data?.message || "Failed to create trip"
       );
@@ -92,6 +90,7 @@ function CreateTrip() {
                   <input
                     type="text"
                     name="fromLocation"
+                    maxLength={100}
                     placeholder="Ichalkaranji"
                     value={tripData.fromLocation}
                     onChange={handleChange}
@@ -112,6 +111,7 @@ function CreateTrip() {
                   <input
                     type="text"
                     name="toLocation"
+                    maxLength={100}
                     placeholder="Goa"
                     value={tripData.toLocation}
                     onChange={handleChange}
@@ -137,6 +137,7 @@ function CreateTrip() {
                     name="numberOfDays"
                     placeholder="4"
                     min="1"
+                    max="14"
                     value={tripData.numberOfDays}
                     onChange={handleChange}
                     className={inputClass}
@@ -179,6 +180,7 @@ function CreateTrip() {
                 <input
                   type="text"
                   name="interests"
+                  maxLength={300}
                   placeholder="Food, Beaches, Adventure, Culture"
                   value={tripData.interests}
                   onChange={handleChange}
