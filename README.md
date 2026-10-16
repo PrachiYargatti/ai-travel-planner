@@ -6,8 +6,6 @@ An AI-powered travel planning web application that generates personalized travel
 
 **Frontend:** https://ai-travel-planner-ten-sandy.vercel.app/
 
-**Backend:** https://ai-travel-planner-backend-l2qs.onrender.com/
-
 ## Features
 
 * User Registration and Login with JWT Authentication
